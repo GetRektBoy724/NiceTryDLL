@@ -106,22 +106,11 @@ public class NiceTryDLL {
 
 	public static IntPtr RealNtReadFileAddr = IntPtr.Zero;
 
-	public static string[] BlacklistedDLLs = { "ntdll.dll" };
-
 	public static void PlantHook(IntPtr TargetFunctionAddr, IntPtr JumpAddr) {
 		byte[] jumpAddrBytes = (IntPtr.Size == 4 ? BitConverter.GetBytes((Int32)JumpAddr) : BitConverter.GetBytes((Int64)JumpAddr));
         byte[] jumpStub = Utils.Combine(new byte[] { Convert.ToByte("49", 16), Convert.ToByte("BB", 16) }, jumpAddrBytes, new byte[] { Convert.ToByte("41", 16), Convert.ToByte("FF", 16), Convert.ToByte("E3", 16) }); // move r11, <jump addr>; jmp r11;
 
         Utils.Copy(jumpStub, 0, TargetFunctionAddr, jumpStub.Length);
-	}
-
-	public static bool IsBlacklisted(string name) {
-		for (int i = 0; i < BlacklistedDLLs.Length; i++) {
-            if (name.EndsWith(BlacklistedDLLs[i], StringComparison.OrdinalIgnoreCase)) {
-                return true;
-            }
-        }
-        return false;
 	}
 
 	public static UInt32 HookedNtReadFile(IntPtr handle, IntPtr evt, IntPtr apcRoutine, IntPtr apcContext, IntPtr ioStatusBlockPtr, IntPtr buffer, uint length, ref long byteOffset, IntPtr key) {
@@ -136,8 +125,8 @@ public class NiceTryDLL {
 		int fileNameLength = Marshal.ReadInt32(pInfoBlock) / 2;
 		string fileName = System.Environment.SystemDirectory.Substring(0,2) + Marshal.PtrToStringUni(pInfoBlock + 4, fileNameLength);
 		Console.WriteLine("[NiceTryDLL v0.1] NtReadFile - FileName : {0}", fileName);
-		if (IsBlacklisted(fileName)) {
-			Console.WriteLine("[NiceTryDLL v0.1] NtReadFile - BLACKLISTED DLL DETECTED!");
+		if (fileName.EndsWith("ntdll.dll")) {
+			Console.WriteLine("[NiceTryDLL v0.1] NtReadFile - NTDLL DETECTED!");
 			Environment.Exit(0);
 		}
 		Marshal.FreeHGlobal(pInfoBlock);
